@@ -198,39 +198,39 @@ class SelfLearningAIAgent:
                         headers=headers,
                         timeout=aiohttp.ClientTimeout(total=self.config.timeout)
                     ) as resp:
-                    
-                    if resp.status == 429:
-                        wait_time = 2 ** attempt
-                        self.logger.log_event("rate_limit_encountered", 
-                                            model=model, attempt=attempt, wait_time=wait_time)
-                        await asyncio.sleep(wait_time)
-                        continue
-                    
-                    if resp.status != 200:
-                        error_text = await resp.text()
-                        self.logger.log_error("model_request_failed", 
-                                            f"HTTP {resp.status}: {error_text}",
-                                            model=model, attempt=attempt)
-                        if attempt == self.config.max_retries - 1:
-                            raise aiohttp.ClientError(f"HTTP {resp.status}: {error_text}")
-                        await asyncio.sleep(1 * (attempt + 1))
-                        continue
-                    
-                    result = await resp.json()
-                    
-                    if "choices" not in result or len(result["choices"]) == 0:
-                        self.logger.log_error("invalid_model_response", 
-                                            "Missing choices in response",
-                                            response=result)
-                        raise ValueError("Invalid model response format")
-                    
-                    text = result["choices"][0]["message"]["content"].strip()
-                    
-                    return {
-                        "text": text,
-                        "model": model,
-                        "request_id": result.get("id", "unknown")
-                    }
+                        
+                        if resp.status == 429:
+                            wait_time = 2 ** attempt
+                            self.logger.log_event("rate_limit_encountered", 
+                                                model=model, attempt=attempt, wait_time=wait_time)
+                            await asyncio.sleep(wait_time)
+                            continue
+                        
+                        if resp.status != 200:
+                            error_text = await resp.text()
+                            self.logger.log_error("model_request_failed", 
+                                                f"HTTP {resp.status}: {error_text}",
+                                                model=model, attempt=attempt)
+                            if attempt == self.config.max_retries - 1:
+                                raise aiohttp.ClientError(f"HTTP {resp.status}: {error_text}")
+                            await asyncio.sleep(1 * (attempt + 1))
+                            continue
+                        
+                        result = await resp.json()
+                        
+                        if "choices" not in result or len(result["choices"]) == 0:
+                            self.logger.log_error("invalid_model_response", 
+                                                "Missing choices in response",
+                                                response=result)
+                            raise ValueError("Invalid model response format")
+                        
+                        text = result["choices"][0]["message"]["content"].strip()
+                        
+                        return {
+                            "text": text,
+                            "model": model,
+                            "request_id": result.get("id", "unknown")
+                        }
                 finally:
                     await temp_session.close()
                     
