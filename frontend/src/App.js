@@ -7,9 +7,11 @@ import Sales from '@/pages/Sales';
 import Refunds from '@/pages/Refunds';
 import Issues from '@/pages/Issues';
 import AIChat from '@/pages/AIChat';
-import AIContentTest from '@/pages/AIContentTest';
-import MailAssistant from '@/pages/MailAssistant';
-import EmailHelper from '@/pages/EmailHelper';
+import Documents from '@/pages/Documents';
+import Communication from '@/pages/Communication';
+import Marketing from '@/pages/Marketing';
+import Video from '@/pages/Video';
+import Website from '@/pages/Website';
 
 function App() {
   return (
@@ -17,14 +19,16 @@ function App() {
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<Dashboard />} />
+          <Route path="documents" element={<Documents />} />
+          <Route path="ai-chat" element={<AIChat />} />
+          <Route path="communication" element={<Communication />} />
+          <Route path="marketing" element={<Marketing />} />
+          <Route path="video" element={<Video />} />
+          <Route path="website" element={<Website />} />
           <Route path="customers" element={<Customers />} />
           <Route path="sales" element={<Sales />} />
           <Route path="refunds" element={<Refunds />} />
           <Route path="issues" element={<Issues />} />
-          <Route path="ai-chat" element={<AIChat />} />
-          <Route path="ai-content-test" element={<AIContentTest />} />
-          <Route path="mail-assistant" element={<MailAssistant />} />
-          <Route path="email-helper" element={<EmailHelper />} />
         </Route>
       </Routes>
     </BrowserRouter>
