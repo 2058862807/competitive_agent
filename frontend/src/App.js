@@ -11,6 +11,7 @@ import Documents from '@/pages/Documents';
 import Communication from '@/pages/Communication';
 import Marketing from '@/pages/Marketing';
 import Video from '@/pages/Video';
+import VideoShowcase from '@/pages/VideoShowcase';
 import Website from '@/pages/Website';
 
 function App() {
@@ -24,6 +25,7 @@ function App() {
           <Route path="communication" element={<Communication />} />
           <Route path="marketing" element={<Marketing />} />
           <Route path="video" element={<Video />} />
+          <Route path="video-showcase" element={<VideoShowcase />} />
           <Route path="website" element={<Website />} />
           <Route path="customers" element={<Customers />} />
           <Route path="sales" element={<Sales />} />
