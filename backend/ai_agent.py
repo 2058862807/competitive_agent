@@ -231,6 +231,8 @@ class SelfLearningAIAgent:
                         "model": model,
                         "request_id": result.get("id", "unknown")
                     }
+                finally:
+                    await temp_session.close()
                     
             except asyncio.TimeoutError:
                 self.logger.log_error("model_timeout", 
