@@ -25,6 +25,7 @@ db = client[os.environ['DB_NAME']]
 
 # Initialize AI Agent
 ai_agent = None
+task_coordinator = None
 
 # Create the main app
 app = FastAPI(title="OfficeFlow AI API")
