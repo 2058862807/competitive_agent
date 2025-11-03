@@ -1,18 +1,20 @@
 import { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, DollarSign, RefreshCw, AlertCircle, MessageSquare, FileText, Mail, Send } from 'lucide-react';
+import { LayoutDashboard, Users, DollarSign, RefreshCw, AlertCircle, MessageSquare, FileText, Mail, Send, Upload, Video, Globe, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const menuItems = [
-  { icon: LayoutDashboard, label: 'Business Dashboard', path: '/' },
-  { icon: Users, label: 'Customers', path: '/customers' },
-  { icon: DollarSign, label: 'Sales', path: '/sales' },
+  { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+  { icon: Upload, label: 'Document Scanner', path: '/documents' },
+  { icon: MessageSquare, label: 'AI Office Manager', path: '/ai-chat' },
+  { icon: Mail, label: 'Fax & Email', path: '/communication' },
+  { icon: TrendingUp, label: 'Marketing Automation', path: '/marketing' },
+  { icon: Video, label: 'Video & Commercials', path: '/video' },
+  { icon: Globe, label: 'Website Manager', path: '/website' },
+  { icon: Users, label: 'Clients', path: '/customers' },
+  { icon: DollarSign, label: 'Revenue', path: '/sales' },
   { icon: RefreshCw, label: 'Refunds', path: '/refunds' },
   { icon: AlertCircle, label: 'Issues', path: '/issues' },
-  { icon: MessageSquare, label: 'AI Agent Chat', path: '/ai-chat' },
-  { icon: FileText, label: 'AI Content Test', path: '/ai-content-test' },
-  { icon: Mail, label: 'Mail Assistant', path: '/mail-assistant' },
-  { icon: Send, label: 'Email Helper', path: '/email-helper' },
 ];
 
 export default function Layout() {
