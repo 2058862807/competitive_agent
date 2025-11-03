@@ -4,17 +4,22 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { sendChatMessage, getChatHistory } from '@/api';
-import { Send, Bot, User, Loader2, Sparkles } from 'lucide-react';
+import { Send, Bot, User, Loader2, Sparkles, Mic, MicOff, Volume2, VolumeX } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function AIChat() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
   const messagesEndRef = useRef(null);
+  const recognitionRef = useRef(null);
+  const synthRef = useRef(null);
 
   useEffect(() => {
     loadHistory();
+    initializeSpeech();
   }, []);
 
   useEffect(() => {
@@ -23,6 +28,87 @@ export default function AIChat() {
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const initializeSpeech = () => {
+    // Initialize Speech Recognition
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = false;
+      recognitionRef.current.interimResults = false;
+      recognitionRef.current.lang = 'en-US';
+
+      recognitionRef.current.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        setInput(transcript);
+        setIsListening(false);
+      };
+
+      recognitionRef.current.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        setIsListening(false);
+        toast.error('Voice recognition failed. Please try again.');
+      };
+
+      recognitionRef.current.onend = () => {
+        setIsListening(false);
+      };
+    }
+
+    // Initialize Speech Synthesis
+    if ('speechSynthesis' in window) {
+      synthRef.current = window.speechSynthesis;
+    }
+  };
+
+  const toggleListening = () => {
+    if (!recognitionRef.current) {
+      toast.error('Voice recognition not supported in your browser');
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    } else {
+      recognitionRef.current.start();
+      setIsListening(true);
+      toast.info('Listening... Speak now');
+    }
+  };
+
+  const speakText = (text) => {
+    if (!synthRef.current || !voiceEnabled) return;
+
+    // Cancel any ongoing speech
+    synthRef.current.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.9;
+    utterance.pitch = 1;
+    utterance.volume = 1;
+
+    // Try to use a good quality voice
+    const voices = synthRef.current.getVoices();
+    const preferredVoice = voices.find(voice => 
+      voice.name.includes('Google') || 
+      voice.name.includes('Microsoft') ||
+      voice.name.includes('Samantha') ||
+      voice.name.includes('Alex')
+    );
+    
+    if (preferredVoice) {
+      utterance.voice = preferredVoice;
+    }
+
+    synthRef.current.speak(utterance);
+  };
+
+  const stopSpeaking = () => {
+    if (synthRef.current) {
+      synthRef.current.cancel();
+    }
   };
 
   const loadHistory = async () => {
@@ -51,7 +137,7 @@ export default function AIChat() {
       const response = await sendChatMessage(userMessage);
       const data = response.data;
       
-      setMessages(prev => [...prev, {
+      const assistantMessage = {
         role: 'assistant',
         content: data.response,
         metadata: {
@@ -60,7 +146,14 @@ export default function AIChat() {
           confidence: data.confidence,
           processing_time: data.processing_time
         }
-      }]);
+      };
+
+      setMessages(prev => [...prev, assistantMessage]);
+
+      // Speak the response if voice is enabled
+      if (voiceEnabled && data.response) {
+        speakText(data.response);
+      }
     } catch (error) {
       toast.error('Failed to get AI response');
       setMessages(prev => [...prev, {
@@ -76,18 +169,35 @@ export default function AIChat() {
   return (
     <div className="space-y-6 fade-in">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900" data-testid="ai-chat-title">AI Agent Chat</h1>
-        <p className="text-gray-500 mt-1">Interact with the self-learning AI agent powered by OpenRouter</p>
+        <h1 className="text-3xl font-bold text-gray-900" data-testid="ai-chat-title">AI Office Manager</h1>
+        <p className="text-gray-500 mt-1">Voice & text chat with your intelligent assistant</p>
       </div>
 
       <Card className="shadow-lg">
         <CardHeader className="bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-t-lg">
-          <CardTitle className="flex items-center space-x-2">
-            <Sparkles className="w-6 h-6" />
-            <span>Self-Learning AI Agent</span>
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Sparkles className="w-6 h-6" />
+              <span>AI Office Manager</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button
+                size="sm"
+                variant={voiceEnabled ? "secondary" : "outline"}
+                onClick={() => {
+                  setVoiceEnabled(!voiceEnabled);
+                  if (voiceEnabled) stopSpeaking();
+                  toast.success(voiceEnabled ? 'Voice disabled' : 'Voice enabled');
+                }}
+                className="bg-white/20 hover:bg-white/30"
+                data-testid="voice-toggle-btn"
+              >
+                {voiceEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+              </Button>
+            </div>
           </CardTitle>
           <CardDescription className="text-purple-100">
-            Competitive multi-model AI with peer review system
+            Speak or type - Powered by OpenRouter with voice capabilities
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
@@ -96,8 +206,8 @@ export default function AIChat() {
             {messages.length === 0 && (
               <div className="flex flex-col items-center justify-center h-full text-gray-400">
                 <Bot className="w-16 h-16 mb-4 opacity-30" />
-                <p className="text-lg font-medium">Start a conversation with the AI Agent</p>
-                <p className="text-sm">Ask anything - the agent will generate competitive responses!</p>
+                <p className="text-lg font-medium">Start a conversation</p>
+                <p className="text-sm">Type or click the microphone to speak</p>
               </div>
             )}
             
@@ -125,26 +235,38 @@ export default function AIChat() {
                   </div>
                   
                   {message.metadata && message.role === 'assistant' && (
-                    <div className="flex items-center space-x-2 mt-2 text-xs text-gray-500">
-                      {message.metadata.score !== undefined && (
-                        <Badge variant="outline" className="text-xs">
-                          Score: {message.metadata.score.toFixed(1)}/10
-                        </Badge>
-                      )}
-                      {message.metadata.confidence && (
-                        <Badge variant="outline" className="text-xs">
-                          {message.metadata.confidence}
-                        </Badge>
-                      )}
-                      {message.metadata.model && (
-                        <Badge variant="outline" className="text-xs">
-                          {message.metadata.model}
-                        </Badge>
-                      )}
-                      {message.metadata.processing_time && (
-                        <span className="text-xs">
-                          {message.metadata.processing_time.toFixed(2)}s
-                        </span>
+                    <div className="flex items-center space-x-2 mt-2">
+                      <div className="flex items-center space-x-2 text-xs text-gray-500">
+                        {message.metadata.score !== undefined && (
+                          <Badge variant="outline" className="text-xs">
+                            Score: {message.metadata.score.toFixed(1)}/10
+                          </Badge>
+                        )}
+                        {message.metadata.confidence && (
+                          <Badge variant="outline" className="text-xs">
+                            {message.metadata.confidence}
+                          </Badge>
+                        )}
+                        {message.metadata.model && (
+                          <Badge variant="outline" className="text-xs">
+                            {message.metadata.model}
+                          </Badge>
+                        )}
+                        {message.metadata.processing_time && (
+                          <span className="text-xs">
+                            {message.metadata.processing_time.toFixed(2)}s
+                          </span>
+                        )}
+                      </div>
+                      {voiceEnabled && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => speakText(message.content)}
+                          className="h-6 px-2"
+                        >
+                          <Volume2 className="w-3 h-3" />
+                        </Button>
                       )}
                     </div>
                   )}
@@ -178,17 +300,27 @@ export default function AIChat() {
           {/* Input Form */}
           <form onSubmit={handleSubmit} className="p-4 border-t bg-white">
             <div className="flex space-x-2">
+              <Button
+                type="button"
+                onClick={toggleListening}
+                disabled={loading}
+                variant={isListening ? "default" : "outline"}
+                className={isListening ? "bg-red-500 hover:bg-red-600 animate-pulse" : ""}
+                data-testid="voice-input-btn"
+              >
+                {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+              </Button>
               <Input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Type your message..."
-                disabled={loading}
+                placeholder={isListening ? "Listening..." : "Type your message or click mic to speak..."}
+                disabled={loading || isListening}
                 className="flex-1"
                 data-testid="chat-input"
               />
               <Button
                 type="submit"
-                disabled={loading || !input.trim()}
+                disabled={loading || !input.trim() || isListening}
                 className="bg-gradient-to-r from-purple-500 to-pink-500 hover:shadow-lg"
                 data-testid="chat-send-btn"
               >
@@ -199,33 +331,39 @@ export default function AIChat() {
                 )}
               </Button>
             </div>
+            <p className="text-xs text-gray-500 mt-2 text-center">
+              {isListening ? '🎤 Listening... Speak now' : 'Click mic to speak or type your message'}
+            </p>
           </form>
         </CardContent>
       </Card>
 
-      {/* Info Cards */}
+      {/* Voice Features Info */}
       <div className="grid md:grid-cols-3 gap-4">
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">Multi-Model</div>
-              <div className="text-sm text-gray-500 mt-1">Competitive generation from multiple AI models</div>
+              <Mic className="w-12 h-12 mx-auto mb-2 text-purple-500" />
+              <div className="text-xl font-bold">Speech-to-Text</div>
+              <div className="text-sm text-gray-500 mt-1">Speak naturally to the AI</div>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
-              <div className="text-2xl font-bold text-pink-600">Peer Review</div>
-              <div className="text-sm text-gray-500 mt-1">Each response is reviewed and improved</div>
+              <Volume2 className="w-12 h-12 mx-auto mb-2 text-pink-500" />
+              <div className="text-xl font-bold">Text-to-Speech</div>
+              <div className="text-sm text-gray-500 mt-1">AI responds with voice</div>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
-              <div className="text-2xl font-bold text-indigo-600">Self-Learning</div>
-              <div className="text-sm text-gray-500 mt-1">Agent learns from successful interactions</div>
+              <Sparkles className="w-12 h-12 mx-auto mb-2 text-indigo-500" />
+              <div className="text-xl font-bold">Hands-Free</div>
+              <div className="text-sm text-gray-500 mt-1">Complete voice conversation</div>
             </div>
           </CardContent>
         </Card>
