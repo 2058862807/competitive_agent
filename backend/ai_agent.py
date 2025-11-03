@@ -460,18 +460,18 @@ Respond ONLY with valid JSON:
 
 # Factory function
 def create_ai_agent():
-    """Create production AI agent"""
+    """Create production AI agent with Emergent Universal Key"""
     
     api_key = os.getenv("OPENROUTER_API_KEY", "your-openrouter-api-key-here")
-    base_url = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
+    base_url = os.getenv("OPENROUTER_BASE_URL", "https://llm.emergentagi.com/v1")
     
     models = [
-        os.getenv("AI_MODEL_PRIMARY", "openai/gpt-4-turbo"),
-        os.getenv("AI_MODEL_SECONDARY", "anthropic/claude-3.5-sonnet"),
-        os.getenv("AI_MODEL_TERTIARY", "google/gemini-pro")
+        os.getenv("AI_MODEL_PRIMARY", "gpt-4o"),
+        os.getenv("AI_MODEL_SECONDARY", "claude-3-5-sonnet-20241022"),
+        os.getenv("AI_MODEL_TERTIARY", "gemini-2.0-flash-exp")
     ]
     
-    review_model = os.getenv("AI_MODEL_REVIEW", "openai/gpt-4-turbo")
+    review_model = os.getenv("AI_MODEL_REVIEW", "gpt-4o")
     
     config = ModelConfig(
         api_key=api_key,
