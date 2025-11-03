@@ -156,7 +156,7 @@ class SelfLearningAIAgent:
     
     async def _call_openrouter(self, session: aiohttp.ClientSession, model: str, 
                                prompt: str, max_tokens: int = 2048) -> Dict[str, Any]:
-        """Call OpenRouter API with specific model"""
+        """Call Emergent Universal API with specific model"""
         
         self._check_rate_limit()
         self._validate_prompt(prompt)
@@ -166,8 +166,6 @@ class SelfLearningAIAgent:
         headers = {
             "Authorization": f"Bearer {self.config.api_key}",
             "Content-Type": "application/json",
-            "HTTP-Referer": "https://officeflow.ai",
-            "X-Title": "OfficeFlow AI Agent"
         }
         
         payload = {
