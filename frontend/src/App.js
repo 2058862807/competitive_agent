@@ -13,6 +13,7 @@ import Marketing from '@/pages/Marketing';
 import Video from '@/pages/Video';
 import VideoShowcase from '@/pages/VideoShowcase';
 import Website from '@/pages/Website';
+import Settings from '@/pages/Settings';
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
           <Route path="video" element={<Video />} />
           <Route path="video-showcase" element={<VideoShowcase />} />
           <Route path="website" element={<Website />} />
+          <Route path="settings" element={<Settings />} />
           <Route path="customers" element={<Customers />} />
           <Route path="sales" element={<Sales />} />
           <Route path="refunds" element={<Refunds />} />
