@@ -41,8 +41,8 @@ export default function Layout() {
               </div>
               {sidebarOpen && (
                 <div>
-                  <h1 className="text-lg font-bold text-gray-900">OfficeFlow AI</h1>
-                  <p className="text-xs text-gray-500">Dental Trust Management</p>
+                  <h1 className="text-lg font-bold text-gray-900">NextAI Global</h1>
+                  <p className="text-xs text-gray-500">AI Office Manager</p>
                 </div>
               )}
             </div>
