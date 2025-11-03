@@ -94,14 +94,14 @@ async def seed_database():
     
     # Sample sales
     products = [
-        "Dental Cleaning",
-        "Teeth Whitening",
-        "Root Canal",
-        "Dental Implant",
-        "Crown Replacement",
-        "Orthodontic Treatment",
-        "Cavity Filling",
-        "Dental Checkup"
+        "AI Estate Planning Consultation",
+        "Trust Management Service",
+        "Software Development Package",
+        "IT Infrastructure Setup",
+        "Publishing Services",
+        "Legal Document Automation",
+        "Digital Asset Management",
+        "Business Process Automation"
     ]
     
     sales = []
