@@ -180,59 +180,48 @@ class SelfLearningAIAgent:
         
         url = f"{self.config.base_url}/chat/completions"
         
-        # Create SSL context that works with the Emergent API
-        ssl_context = ssl.create_default_context()
-        ssl_context.check_hostname = False
-        ssl_context.verify_mode = ssl.CERT_NONE
-        
-        connector = aiohttp.TCPConnector(ssl=ssl_context)
-        
         for attempt in range(self.config.max_retries):
             try:
-                # Create session with SSL connector
-                temp_session = aiohttp.ClientSession(connector=connector)
-                try:
-                    async with temp_session.post(
-                        url, 
-                        json=payload, 
-                        headers=headers,
-                        timeout=aiohttp.ClientTimeout(total=self.config.timeout)
-                    ) as resp:
-                        
-                        if resp.status == 429:
-                            wait_time = 2 ** attempt
-                            self.logger.log_event("rate_limit_encountered", 
-                                                model=model, attempt=attempt, wait_time=wait_time)
-                            await asyncio.sleep(wait_time)
-                            continue
-                        
-                        if resp.status != 200:
-                            error_text = await resp.text()
-                            self.logger.log_error("model_request_failed", 
-                                                f"HTTP {resp.status}: {error_text}",
-                                                model=model, attempt=attempt)
-                            if attempt == self.config.max_retries - 1:
-                                raise aiohttp.ClientError(f"HTTP {resp.status}: {error_text}")
-                            await asyncio.sleep(1 * (attempt + 1))
-                            continue
-                        
-                        result = await resp.json()
-                        
-                        if "choices" not in result or len(result["choices"]) == 0:
-                            self.logger.log_error("invalid_model_response", 
-                                                "Missing choices in response",
-                                                response=result)
-                            raise ValueError("Invalid model response format")
-                        
-                        text = result["choices"][0]["message"]["content"].strip()
-                        
-                        return {
-                            "text": text,
-                            "model": model,
-                            "request_id": result.get("id", "unknown")
-                        }
-                finally:
-                    await temp_session.close()
+                async with session.post(
+                    url, 
+                    json=payload, 
+                    headers=headers,
+                    timeout=aiohttp.ClientTimeout(total=self.config.timeout),
+                    ssl=False  # Disable SSL verification for Emergent API
+                ) as resp:
+                    
+                    if resp.status == 429:
+                        wait_time = 2 ** attempt
+                        self.logger.log_event("rate_limit_encountered", 
+                                            model=model, attempt=attempt, wait_time=wait_time)
+                        await asyncio.sleep(wait_time)
+                        continue
+                    
+                    if resp.status != 200:
+                        error_text = await resp.text()
+                        self.logger.log_error("model_request_failed", 
+                                            f"HTTP {resp.status}: {error_text}",
+                                            model=model, attempt=attempt)
+                        if attempt == self.config.max_retries - 1:
+                            raise aiohttp.ClientError(f"HTTP {resp.status}: {error_text}")
+                        await asyncio.sleep(1 * (attempt + 1))
+                        continue
+                    
+                    result = await resp.json()
+                    
+                    if "choices" not in result or len(result["choices"]) == 0:
+                        self.logger.log_error("invalid_model_response", 
+                                            "Missing choices in response",
+                                            response=result)
+                        raise ValueError("Invalid model response format")
+                    
+                    text = result["choices"][0]["message"]["content"].strip()
+                    
+                    return {
+                        "text": text,
+                        "model": model,
+                        "request_id": result.get("id", "unknown")
+                    }
                     
             except asyncio.TimeoutError:
                 self.logger.log_error("model_timeout", 
