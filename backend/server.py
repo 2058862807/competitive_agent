@@ -853,6 +853,23 @@ async def health_check():
         "ai_agent": "ready" if ai_agent else "not initialized"
     }
 
+@api_router.get("/download/package")
+async def download_package():
+    """Download the complete NextAI Global package"""
+    from fastapi.responses import FileResponse
+    import os
+    
+    zip_path = "/tmp/NextAI_Global_Complete.zip"
+    
+    if not os.path.exists(zip_path):
+        raise HTTPException(status_code=404, detail="Package not found")
+    
+    return FileResponse(
+        zip_path,
+        media_type="application/zip",
+        filename="NextAI_Global_Complete.zip"
+    )
+
 # Include router in app
 app.include_router(api_router)
 
