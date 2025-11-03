@@ -1,4 +1,5 @@
-from fastapi import FastAPI, APIRouter, HTTPException
+from fastapi import FastAPI, APIRouter, HTTPException, UploadFile, File, Form
+from fastapi.responses import FileResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -10,7 +11,9 @@ from typing import List, Optional
 import uuid
 from datetime import datetime, timezone, timedelta
 from ai_agent import create_ai_agent
+from office_modules import TaskCoordinator, DocumentProcessor, CommunicationHub, MarketingAutomation, VideoGenerator, WebsiteManager
 import asyncio
+import shutil
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
