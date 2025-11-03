@@ -348,10 +348,11 @@ async def update_issue(issue_id: str, input: IssueUpdate):
 
 @api_router.post("/chat", response_model=ChatMessage)
 async def chat_with_agent(input: ChatRequest):
-    global ai_agent
+    global ai_agent, task_coordinator
     
     if ai_agent is None:
         ai_agent = create_ai_agent()
+        task_coordinator = TaskCoordinator(ai_agent)
     
     # Get AI response
     result = await ai_agent.solve(input.message)
@@ -376,6 +377,393 @@ async def chat_with_agent(input: ChatRequest):
 async def get_chat_history():
     messages = await db.chat_messages.find({}, {"_id": 0}).sort("created_at", -1).limit(50).to_list(50)
     return [deserialize_datetime(m) for m in messages]
+
+# ==============================
+# ROUTES - DOCUMENT MANAGEMENT
+# ==============================
+
+class DocumentAnalysis(BaseModel):
+    filename: str
+    file_type: str
+    file_size: int
+    text_content: str
+    word_count: int
+    char_count: int
+    ai_analysis: Optional[str] = None
+    analysis_score: Optional[float] = None
+    analysis_confidence: Optional[str] = None
+    processed_at: str
+
+@api_router.post("/documents/upload")
+async def upload_document(file: UploadFile = File(...)):
+    """Upload and process document"""
+    global task_coordinator
+    
+    if task_coordinator is None:
+        ai_agent = create_ai_agent()
+        task_coordinator = TaskCoordinator(ai_agent)
+    
+    try:
+        # Save uploaded file
+        upload_folder = Path("/app/backend/uploads")
+        upload_folder.mkdir(exist_ok=True)
+        
+        file_id = str(uuid.uuid4())
+        file_path = upload_folder / f"{file_id}_{file.filename}"
+        
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        
+        # Process document
+        result = await task_coordinator.document_processor.process_document(
+            str(file_path), 
+            file.filename
+        )
+        
+        if "error" in result:
+            return {"status": "error", "message": result["error"]}
+        
+        # Analyze with AI
+        analysis = await task_coordinator.document_processor.analyze_with_ai(result, task_coordinator.ai_agent)
+        
+        # Store in database
+        doc_record = {
+            "id": file_id,
+            "file_path": str(file_path),
+            **analysis,
+            "uploaded_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        await db.documents.insert_one(doc_record)
+        await log_activity("document", "uploaded", f"Document uploaded: {file.filename}", file_id)
+        
+        return {
+            "status": "success",
+            "document_id": file_id,
+            "analysis": analysis
+        }
+        
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@api_router.get("/documents")
+async def get_documents():
+    """Get all uploaded documents"""
+    docs = await db.documents.find({}, {"_id": 0, "text_content": 0}).sort("uploaded_at", -1).to_list(100)
+    return docs
+
+@api_router.get("/documents/{document_id}")
+async def get_document(document_id: str):
+    """Get specific document with full analysis"""
+    doc = await db.documents.find_one({"id": document_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return doc
+
+# ==============================
+# ROUTES - COMMUNICATION
+# ==============================
+
+class FaxRequest(BaseModel):
+    to_number: str
+    document_id: str
+    cover_page: Optional[str] = None
+
+class EmailRequest(BaseModel):
+    to: str
+    subject: str
+    body: str
+
+class EmailReplyRequest(BaseModel):
+    original_email: str
+
+@api_router.post("/communication/fax")
+async def send_fax(request: FaxRequest):
+    """Send fax"""
+    global task_coordinator
+    
+    if task_coordinator is None:
+        ai_agent = create_ai_agent()
+        task_coordinator = TaskCoordinator(ai_agent)
+    
+    # Get document
+    doc = await db.documents.find_one({"id": request.document_id})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    result = await task_coordinator.communication.send_fax(
+        request.to_number,
+        doc["file_path"],
+        request.cover_page
+    )
+    
+    await log_activity("fax", "sent", f"Fax sent to {request.to_number}")
+    return result
+
+@api_router.post("/communication/email")
+async def send_email(request: EmailRequest):
+    """Send email"""
+    global task_coordinator
+    
+    if task_coordinator is None:
+        ai_agent = create_ai_agent()
+        task_coordinator = TaskCoordinator(ai_agent)
+    
+    result = await task_coordinator.communication.send_email(
+        request.to,
+        request.subject,
+        request.body
+    )
+    
+    await log_activity("email", "sent", f"Email sent to {request.to}")
+    return result
+
+@api_router.post("/communication/email/reply")
+async def generate_email_reply(request: EmailReplyRequest):
+    """Generate AI email reply"""
+    global task_coordinator
+    
+    if task_coordinator is None:
+        ai_agent = create_ai_agent()
+        task_coordinator = TaskCoordinator(ai_agent)
+    
+    result = await task_coordinator.communication.generate_email_reply(
+        request.original_email,
+        task_coordinator.ai_agent
+    )
+    
+    return result
+
+# ==============================
+# ROUTES - MARKETING & SOCIAL MEDIA
+# ==============================
+
+class SocialPostRequest(BaseModel):
+    topic: str
+    platform: str  # linkedin, twitter, facebook, instagram
+
+class PostToSocialRequest(BaseModel):
+    platform: str
+    content: str
+
+class MarketingCampaignRequest(BaseModel):
+    campaign_type: str
+
+@api_router.post("/marketing/generate-post")
+async def generate_social_post(request: SocialPostRequest):
+    """Generate social media post"""
+    global task_coordinator
+    
+    if task_coordinator is None:
+        ai_agent = create_ai_agent()
+        task_coordinator = TaskCoordinator(ai_agent)
+    
+    result = await task_coordinator.marketing.generate_social_post(
+        request.topic,
+        request.platform,
+        task_coordinator.ai_agent
+    )
+    
+    # Store in database
+    post_record = {
+        "id": str(uuid.uuid4()),
+        **result
+    }
+    await db.social_posts.insert_one(post_record)
+    await log_activity("marketing", "created", f"{request.platform} post generated")
+    
+    return result
+
+@api_router.post("/marketing/post")
+async def post_to_social(request: PostToSocialRequest):
+    """Post content to social media"""
+    global task_coordinator
+    
+    if task_coordinator is None:
+        ai_agent = create_ai_agent()
+        task_coordinator = TaskCoordinator(ai_agent)
+    
+    result = await task_coordinator.marketing.post_to_social(
+        request.platform,
+        request.content
+    )
+    
+    await log_activity("marketing", "posted", f"Posted to {request.platform}")
+    return result
+
+@api_router.post("/marketing/campaign")
+async def generate_marketing_campaign(request: MarketingCampaignRequest):
+    """Generate complete marketing campaign"""
+    global task_coordinator
+    
+    if task_coordinator is None:
+        ai_agent = create_ai_agent()
+        task_coordinator = TaskCoordinator(ai_agent)
+    
+    result = await task_coordinator.marketing.generate_marketing_campaign(
+        request.campaign_type,
+        task_coordinator.ai_agent
+    )
+    
+    # Store in database
+    campaign_record = {
+        "id": str(uuid.uuid4()),
+        **result
+    }
+    await db.marketing_campaigns.insert_one(campaign_record)
+    await log_activity("marketing", "campaign_created", f"Campaign created: {request.campaign_type}")
+    
+    return result
+
+@api_router.get("/marketing/posts")
+async def get_social_posts():
+    """Get all generated social posts"""
+    posts = await db.social_posts.find({}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    return posts
+
+@api_router.get("/marketing/campaigns")
+async def get_campaigns():
+    """Get all marketing campaigns"""
+    campaigns = await db.marketing_campaigns.find({}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    return campaigns
+
+# ==============================
+# ROUTES - VIDEO & COMMERCIALS
+# ==============================
+
+class CommercialRequest(BaseModel):
+    duration: int  # seconds
+    focus: str
+
+class VideoGenerationRequest(BaseModel):
+    script: str
+    voice_type: Optional[str] = "professional"
+
+@api_router.post("/video/generate-script")
+async def generate_commercial_script(request: CommercialRequest):
+    """Generate commercial script"""
+    global task_coordinator
+    
+    if task_coordinator is None:
+        ai_agent = create_ai_agent()
+        task_coordinator = TaskCoordinator(ai_agent)
+    
+    result = await task_coordinator.video_gen.generate_commercial_script(
+        request.duration,
+        request.focus,
+        task_coordinator.ai_agent
+    )
+    
+    # Store in database
+    script_record = {
+        "id": str(uuid.uuid4()),
+        **result
+    }
+    await db.video_scripts.insert_one(script_record)
+    await log_activity("video", "script_created", f"{request.duration}s commercial script generated")
+    
+    return result
+
+@api_router.post("/video/generate")
+async def generate_video(request: VideoGenerationRequest):
+    """Generate video from script"""
+    global task_coordinator
+    
+    if task_coordinator is None:
+        ai_agent = create_ai_agent()
+        task_coordinator = TaskCoordinator(ai_agent)
+    
+    result = await task_coordinator.video_gen.generate_video(
+        request.script,
+        request.voice_type
+    )
+    
+    await log_activity("video", "generated", "Video generation queued")
+    return result
+
+@api_router.get("/video/scripts")
+async def get_video_scripts():
+    """Get all video scripts"""
+    scripts = await db.video_scripts.find({}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    return scripts
+
+# ==============================
+# ROUTES - WEBSITE MANAGEMENT
+# ==============================
+
+class WebContentRequest(BaseModel):
+    page: str
+
+@api_router.get("/website/status")
+async def check_website_status():
+    """Check website status and performance"""
+    global task_coordinator
+    
+    if task_coordinator is None:
+        ai_agent = create_ai_agent()
+        task_coordinator = TaskCoordinator(ai_agent)
+    
+    result = await task_coordinator.website.check_website_status()
+    
+    # Store in database
+    status_record = {
+        "id": str(uuid.uuid4()),
+        **result
+    }
+    await db.website_checks.insert_one(status_record)
+    
+    return result
+
+@api_router.get("/website/seo-analysis")
+async def analyze_website_seo():
+    """Analyze website SEO"""
+    global task_coordinator
+    
+    if task_coordinator is None:
+        ai_agent = create_ai_agent()
+        task_coordinator = TaskCoordinator(ai_agent)
+    
+    result = await task_coordinator.website.analyze_seo(task_coordinator.ai_agent)
+    
+    # Store in database
+    seo_record = {
+        "id": str(uuid.uuid4()),
+        **result
+    }
+    await db.seo_analyses.insert_one(seo_record)
+    await log_activity("website", "seo_analyzed", "SEO analysis completed")
+    
+    return result
+
+@api_router.post("/website/generate-content")
+async def generate_website_content(request: WebContentRequest):
+    """Generate website content"""
+    global task_coordinator
+    
+    if task_coordinator is None:
+        ai_agent = create_ai_agent()
+        task_coordinator = TaskCoordinator(ai_agent)
+    
+    result = await task_coordinator.website.generate_website_content(
+        request.page,
+        task_coordinator.ai_agent
+    )
+    
+    # Store in database
+    content_record = {
+        "id": str(uuid.uuid4()),
+        **result
+    }
+    await db.web_content.insert_one(content_record)
+    await log_activity("website", "content_generated", f"Content generated for {request.page}")
+    
+    return result
+
+@api_router.get("/website/history")
+async def get_website_checks():
+    """Get website check history"""
+    checks = await db.website_checks.find({}, {"_id": 0}).sort("checked_at", -1).limit(50).to_list(50)
+    return checks
 
 # ==============================
 # ROUTES - DASHBOARD
