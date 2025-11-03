@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, DollarSign, RefreshCw, AlertCircle, MessageSquare, FileText, Mail, Send, Upload, Video, Globe, TrendingUp, Play } from 'lucide-react';
+import { LayoutDashboard, Users, DollarSign, RefreshCw, AlertCircle, MessageSquare, FileText, Mail, Send, Upload, Video, Globe, TrendingUp, Play, Settings as SettingsIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const menuItems = [
@@ -9,9 +9,10 @@ const menuItems = [
   { icon: Upload, label: 'Document Scanner', path: '/documents' },
   { icon: MessageSquare, label: 'AI Office Manager', path: '/ai-chat' },
   { icon: Mail, label: 'Fax & Email', path: '/communication' },
-  { icon: TrendingUp, label: 'Marketing Automation', path: '/marketing' },
+  { icon: TrendingUp, label: 'Marketing', path: '/marketing' },
   { icon: Video, label: 'Video Generator', path: '/video' },
   { icon: Globe, label: 'Website Manager', path: '/website' },
+  { icon: SettingsIcon, label: 'Settings & API Keys', path: '/settings' },
   { icon: Users, label: 'Clients', path: '/customers' },
   { icon: DollarSign, label: 'Revenue', path: '/sales' },
   { icon: RefreshCw, label: 'Refunds', path: '/refunds' },
