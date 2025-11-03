@@ -180,14 +180,24 @@ class SelfLearningAIAgent:
         
         url = f"{self.config.base_url}/chat/completions"
         
+        # Create SSL context that works with the Emergent API
+        ssl_context = ssl.create_default_context()
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_NONE
+        
+        connector = aiohttp.TCPConnector(ssl=ssl_context)
+        
         for attempt in range(self.config.max_retries):
             try:
-                async with session.post(
-                    url, 
-                    json=payload, 
-                    headers=headers,
-                    timeout=aiohttp.ClientTimeout(total=self.config.timeout)
-                ) as resp:
+                # Create session with SSL connector
+                temp_session = aiohttp.ClientSession(connector=connector)
+                try:
+                    async with temp_session.post(
+                        url, 
+                        json=payload, 
+                        headers=headers,
+                        timeout=aiohttp.ClientTimeout(total=self.config.timeout)
+                    ) as resp:
                     
                     if resp.status == 429:
                         wait_time = 2 ** attempt
