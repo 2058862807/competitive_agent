@@ -10,7 +10,8 @@ from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional
 import uuid
 from datetime import datetime, timezone, timedelta
-from ai_agent import create_ai_agent
+from ai_agent import create_ai_agent as create_complex_agent
+from simple_agent import create_ai_agent
 from office_modules import TaskCoordinator, DocumentProcessor, CommunicationHub, MarketingAutomation, VideoGenerator, WebsiteManager
 import asyncio
 import shutil
