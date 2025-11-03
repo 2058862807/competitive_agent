@@ -2,6 +2,7 @@ import asyncio
 import numpy as np
 from typing import List, Dict, Any, Optional, Tuple
 import aiohttp
+import ssl
 import faiss
 import json
 import time
