@@ -46,9 +46,9 @@ export default function Dashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900" data-testid="dashboard-title">
-            Business Dashboard
+            NextAI Global - Office Dashboard
           </h1>
-          <p className="text-gray-500 mt-1">View the dashboard data. Please try again later.</p>
+          <p className="text-gray-500 mt-1">AI-powered office management and analytics</p>
         </div>
         <button
           onClick={loadStats}
